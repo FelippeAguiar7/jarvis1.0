@@ -1,29 +1,34 @@
-import requests
-from datetime import datetime, timedelta
+import AcessaApiDeCotacao
+import acessaGoogleSheet
+import EnviaEmailGmail
+import AnaliseValores
 
+#ACESSO A API DE COTACAO DE MOEDAS
+cotacaoDolarComercial, cotacaoDolarTurismo, timestamp = AcessaApiDeCotacao.acessaCotacaoDolar()
+dolar = 'Dolar Comercial'
+dolart = 'Dolar Turismo'
+str_timestamp = str(timestamp)   #converte para string, pois o json nao funciona com timestamp
 
-def acessaCotacaoDolar():
-    requisicao = requests.get("https://economia.awesomeapi.com.br/last/USD-BRL")
-    requisicaoDolar_dic = requisicao.json()
-    cotacaoDolarComercial = requisicaoDolar_dic["USDBRL"]["ask"]
-    
-    requisicao = requests.get("https://economia.awesomeapi.com.br/last/USD-BRLT")
-    requisicaoDolarTurismo_dic = requisicao.json()
-    cotacaoDolarTurismo = requisicaoDolarTurismo_dic["USDBRLT"]["ask"]
-    timestamp = datetime.now()
-    
-    return cotacaoDolarComercial, cotacaoDolarTurismo, timestamp
+cotacaoEuro, timestampEuro = AcessaApiDeCotacao.acessoCotacaoEuro()
+euro = 'Euro'
+str_timestampEuro = str(timestampEuro)   #converte para string, pois o json nao funciona com timestamp
 
+#CONECTA AO GOOGLESHEET 
+acessaGoogleSheet.conectar()
 
-def acessoCotacaoEuro():
-    requisicao = requests.get("https://economia.awesomeapi.com.br/last/EUR-BRL")
-    requisicao_dic = requisicao.json()
-    cotacaoEuro = requisicao_dic["EURBRL"]["bid"]
-    timestamp = datetime.now()
+#OBTEM A QUANTIDADE DE REGISTROS NA BASE, PARA GRAVAR NO REGISTRO VAZIO SEGUINTE
+lista = acessaGoogleSheet.read()
+quantidadeItensLista = len(lista)
 
-    return cotacaoEuro, timestamp
+listaAtualizacao = [[dolar,cotacaoDolarComercial,str_timestamp],
+                    [dolart,cotacaoDolarTurismo,str_timestamp],
+                    [euro,cotacaoEuro,str_timestampEuro]]
 
+#GRAVA NA BASE DE DADOS
+acessaGoogleSheet.write(quantidadeItensLista, listaAtualizacao)
 
-#teste
-#print (acessaCotacaoDolar())
-#print (acessoCotacaoEuro())
+#Analisa os valores e monta o Grafico para enviar por email
+AnaliseValores.analiseDolar()
+
+#Envia Email
+EnviaEmailGmail.enviar_email(cotacaoDolarComercial, cotacaoEuro)
